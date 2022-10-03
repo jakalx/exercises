@@ -33,12 +33,15 @@ module Lecture1
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
+import Text.Printf
+
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Specify the type signature of the following function. Think about
 its behaviour, possible types for the function arguments and write the
 type signature explicitly.
 -}
+makeSnippet :: Int -> String -> String
 makeSnippet limit text = take limit ("Description: " ++ text) ++ "..."
 
 {- | Implement a function that takes two numbers and finds sum of
@@ -53,8 +56,8 @@ their squares.
 Explanation: @sumOfSquares 3 4@ should be equal to @9 + 16@ and this
 is 25.
 -}
--- DON'T FORGET TO SPECIFY THE TYPE IN HERE
-sumOfSquares x y = error "TODO!"
+sumOfSquares :: Num a => a -> a -> a
+sumOfSquares x y = x*x + y*y
 
 {- | Implement a function that returns the last digit of a given number.
 
@@ -66,8 +69,8 @@ sumOfSquares x y = error "TODO!"
 🕯 HINT: use the @mod@ function
 
 -}
--- DON'T FORGET TO SPECIFY THE TYPE IN HERE
-lastDigit n = error "lastDigit: Not implemented!"
+lastDigit :: Integral a => a -> a
+lastDigit = (`mod` 10) . abs
 
 {- | Write a function that takes three numbers and returns the
 difference between the biggest number and the smallest one.
@@ -81,7 +84,10 @@ and 1 is the smallest, and 7 - 1 = 6.
 Try to use local variables (either let-in or where) to implement this
 function.
 -}
-minmax x y z = error "TODO"
+minmax :: (Num a, Ord a) => a -> a -> a -> a
+minmax x y z = h - l
+  where h = max x (max y z)
+        l = min x (min y z)
 
 {- | Implement a function that takes a string, start and end positions
 and returns a substring of a given string from the start position to
@@ -98,7 +104,11 @@ start position can be considered as zero (e.g. substring from the
 first character) and negative end position should result in an empty
 string.
 -}
-subString start end str = error "TODO"
+subString :: Int -> Int -> String -> String
+subString start end
+  | end < 0 = const []
+  | start < 0 = subString 0 end
+  | otherwise = take (end - start + 1) . drop start
 
 {- | Write a function that takes a String — space separated numbers,
 and finds a sum of the numbers inside this string.
@@ -108,7 +118,8 @@ and finds a sum of the numbers inside this string.
 
 The string contains only spaces and/or numbers.
 -}
-strSum str = error "TODO"
+strSum :: String -> Integer
+strSum = sum . fmap read . words
 
 {- | Write a function that takes a number and a list of numbers and
 returns a string, saying how many elements of the list are strictly
@@ -123,4 +134,7 @@ and lower than 6 elements (4, 5, 6, 7, 8 and 9).
 
 🕯 HINT: Use recursion to implement this function.
 -}
-lowerAndGreater n list = error "TODO"
+lowerAndGreater :: Int -> [Int] -> String
+lowerAndGreater n list = printf "%d is greater than %d elements and lower than %d elements" n greater lower
+  where greater = length $ filter (<n) list
+        lower = length $ filter (>n) list
