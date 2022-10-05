@@ -70,7 +70,7 @@ sumOfSquares x y = x*x + y*y
 
 -}
 lastDigit :: Integral a => a -> a
-lastDigit = (`mod` 10) . abs
+lastDigit n = (abs n) `mod` 10
 
 {- | Write a function that takes three numbers and returns the
 difference between the biggest number and the smallest one.
@@ -107,8 +107,9 @@ string.
 subString :: Int -> Int -> String -> String
 subString start end
   | end < 0 = const []
-  | start < 0 = subString 0 end
-  | otherwise = take (end - start + 1) . drop start
+  | start < 0 = take n
+  | otherwise = drop start . take n
+  where n = end + 1
 
 {- | Write a function that takes a String — space separated numbers,
 and finds a sum of the numbers inside this string.
@@ -136,5 +137,9 @@ and lower than 6 elements (4, 5, 6, 7, 8 and 9).
 -}
 lowerAndGreater :: Int -> [Int] -> String
 lowerAndGreater n list = printf "%d is greater than %d elements and lower than %d elements" n greater lower
-  where greater = length $ filter (<n) list
-        lower = length $ filter (>n) list
+  where (lower, greater) = foldr count (0, 0) list
+        count :: Int -> (Int, Int) -> (Int, Int)
+        count x (lt, gt)
+          | n < x = (lt + 1, gt)
+          | n > x = (lt, gt + 1)
+          | otherwise = (lt, gt)
