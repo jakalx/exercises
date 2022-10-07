@@ -42,6 +42,9 @@ module Lecture2
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
+import Data.Char (isSpace)
+import Control.Monad (guard)
+
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
 
 {- | Implement a function that finds a product of all the numbers in
@@ -52,7 +55,9 @@ zero, you can stop calculating product and return 0 immediately.
 84
 -}
 lazyProduct :: [Int] -> Int
-lazyProduct = error "TODO"
+lazyProduct = foldr step (1 :: Int)
+  where step :: Int -> Int -> Int
+        step x y = if x == 0 then 0 else x*y
 
 {- | Implement a function that duplicates every element in the list.
 
@@ -62,7 +67,7 @@ lazyProduct = error "TODO"
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = error "TODO"
+duplicate = concat . fmap (take 2 . repeat)
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -74,7 +79,12 @@ return the removed element.
 >>> removeAt 10 [1 .. 5]
 (Nothing,[1,2,3,4,5])
 -}
-removeAt = error "TODO"
+removeAt :: Int -> [a] -> (Maybe a, [a])
+removeAt n xs
+  | n < 0 = (Nothing, xs)
+  | otherwise = case splitAt n xs of
+      (h, []) -> (Nothing, h)
+      (h, (x:rest)) -> (Just x, h ++ rest)
 
 {- | Write a function that takes a list of lists and returns only
 lists of even lengths.
@@ -85,7 +95,8 @@ lists of even lengths.
 ♫ NOTE: Use eta-reduction and function composition (the dot (.) operator)
   in this function.
 -}
-evenLists = error "TODO"
+evenLists :: [[a]] -> [[a]]
+evenLists = filter (even . length)
 
 {- | The @dropSpaces@ function takes a string containing a single word
 or number surrounded by spaces and removes all leading and trailing
@@ -101,7 +112,8 @@ spaces.
 
 🕯 HINT: look into Data.Char and Prelude modules for functions you may use.
 -}
-dropSpaces = error "TODO"
+dropSpaces :: String -> String
+dropSpaces = takeWhile (not . isSpace) . dropWhile isSpace
 
 {- |
 
@@ -164,6 +176,46 @@ data Knight = Knight
     , knightEndurance :: Int
     }
 
+newtype Gold = Gold {unGold :: Integer}
+newtype Experience = Experience {unExperience :: Integer}
+
+mkGold :: Integer -> Maybe Gold
+mkGold n = Gold <$> do
+  guard (n > 0)
+  pure n
+
+data Chest a = Chest
+  { chestGold :: Gold
+  , chestTreasure :: Maybe a
+  }
+data FightResult a = Win Gold (Maybe a) Experience
+
+data DragonReward a = RedDragonReward (Chest a)
+                    | BlackDragonReward (Chest a)
+                    | GreenDragonReward Gold
+
+data Dragon a = Dragon
+  { dragonHealth :: Int
+  , dragonFirePower :: Int
+  , dragonReward :: DragonReward a
+  }
+
+dragonWithHealth :: Int -> Dragon a -> Dragon a
+dragonWithHealth health d = d{dragonHealth = health}
+
+dragonWithPower :: Int -> Dragon a -> Dragon a
+dragonWithPower health d = d{dragonFirePower = health}
+
+greenDragon :: Gold -> Dragon a
+greenDragon g = Dragon{dragonHealth = 100, dragonFirePower = 5, dragonReward = GreenDragonReward g}
+
+blackDragon :: Chest a -> Dragon a
+blackDragon chest = Dragon{dragonHealth = 150, dragonFirePower = 6, dragonReward = BlackDragonReward chest}
+
+redDragon :: Chest a -> Dragon a
+redDragon chest = Dragon{dragonHealth = 100, dragonFirePower = 5, dragonReward = RedDragonReward chest}
+
+dragonFight :: Knight -> Dragon a -> FightResult a
 dragonFight = error "TODO"
 
 ----------------------------------------------------------------------------
@@ -185,7 +237,10 @@ False
 True
 -}
 isIncreasing :: [Int] -> Bool
-isIncreasing = error "TODO"
+isIncreasing [] = True
+isIncreasing (_:[]) = True
+isIncreasing (x:y:rest) = x < y && isIncreasing (y:rest)
+
 
 {- | Implement a function that takes two lists, sorted in the
 increasing order, and merges them into new list, also sorted in the
@@ -198,7 +253,11 @@ verify that.
 [1,2,3,4,7]
 -}
 merge :: [Int] -> [Int] -> [Int]
-merge = error "TODO"
+merge xs [] = xs
+merge [] ys = ys
+merge (x:xs) (y:ys)
+  | x < y = x : merge xs (y:ys)
+  | otherwise = y : merge (x:xs) ys
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
 function takes a list of numbers and returns a new list containing the
@@ -215,8 +274,11 @@ The algorithm of merge sort is the following:
 [1,2,3]
 -}
 mergeSort :: [Int] -> [Int]
-mergeSort = error "TODO"
-
+mergeSort [] = []
+mergeSort [x] = [x]
+mergeSort xs = merge (mergeSort left) (mergeSort right)
+  where (left, right) = splitAt pivot xs
+        pivot = length xs `div` 2
 
 {- | Haskell is famous for being a superb language for implementing
 compilers and interpeters to other programming languages. In the next
@@ -268,7 +330,14 @@ data EvalError
 It returns either a successful evaluation result or an error.
 -}
 eval :: Variables -> Expr -> Either EvalError Int
-eval = error "TODO"
+eval _ (Lit x) = pure x
+eval vars (Var x) = case lookup x vars of
+  Just value -> pure value
+  Nothing -> Left $ VariableNotFound x
+eval vars (Add lhs rhs) = do
+  x <- eval vars lhs
+  y <- eval vars rhs
+  pure $ x + y
 
 {- | Compilers also perform optimizations! One of the most common
 optimizations is "Constant Folding". It performs arithmetic operations
@@ -288,8 +357,30 @@ It also can be:
 
 x + 45 + y
 
-Write a function that takes and expression and performs "Constant
+Write a function that takes an expression and performs "Constant
 Folding" optimization on the given expression.
+
+jakalx: The idea here is to remove all (Lit x) items, combine them and then
+form a new expression out of the remaining exression, if any and our final
+literal.
 -}
 constantFolding :: Expr -> Expr
-constantFolding = error "TODO"
+constantFolding e = case pullOutConstant e of
+  (0, Just x) -> x
+  (n, Nothing) -> Lit n
+  (n, Just x) -> Add (Lit n) x
+
+pullOutConstant :: Expr -> (Int, Maybe Expr)
+pullOutConstant (Lit x) = (x, Nothing)
+pullOutConstant (Var x) = (0, Just $ Var x)
+pullOutConstant (Add x y) = (a+b, me)
+  where
+    (a, e1) = pullOutConstant x
+    (b, e2) = pullOutConstant y
+
+    me = case e1 of
+      Just e1' ->
+        case e2 of
+          Just e2' -> pure $ Add e1' e2'
+          Nothing -> e1
+      Nothing -> e2
