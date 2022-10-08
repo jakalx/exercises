@@ -17,6 +17,8 @@ challenging exercises. You don't need to solve them to finish the
 course but you can if you like challenges :)
 -}
 
+{-# LANGUAGE RecordWildCards #-}
+
 module Lecture2
     ( -- * Normal
       lazyProduct
@@ -25,8 +27,19 @@ module Lecture2
     , evenLists
     , dropSpaces
 
+    , Chest(..)
+    , Dragon(..)
+    , DragonReward(..)
+    , Experience(..)
+    , FightResult (..)
+    , Gold
     , Knight (..)
     , dragonFight
+    , redDragon
+    , blackDragon
+    , greenDragon
+    , mkGold
+    , unGold
 
       -- * Hard
     , isIncreasing
@@ -175,9 +188,12 @@ data Knight = Knight
     , knightAttack    :: Int
     , knightEndurance :: Int
     }
+    deriving (Eq, Show)
 
 newtype Gold = Gold {unGold :: Integer}
+  deriving (Eq, Show)
 newtype Experience = Experience {unExperience :: Integer}
+  deriving (Eq, Show)
 
 mkGold :: Integer -> Maybe Gold
 mkGold n = Gold <$> do
@@ -188,26 +204,27 @@ data Chest a = Chest
   { chestGold :: Gold
   , chestTreasure :: Maybe a
   }
+  deriving (Eq, Show)
+
 data FightResult a = Win Gold (Maybe a) Experience
+                   | Death
+                   | Flee
+  deriving (Eq, Show)
 
 data DragonReward a = RedDragonReward (Chest a)
                     | BlackDragonReward (Chest a)
                     | GreenDragonReward Gold
+                    deriving (Eq, Show)
 
 data Dragon a = Dragon
   { dragonHealth :: Int
   , dragonFirePower :: Int
   , dragonReward :: DragonReward a
   }
+  deriving (Eq, Show)
 
-dragonWithHealth :: Int -> Dragon a -> Dragon a
-dragonWithHealth health d = d{dragonHealth = health}
-
-dragonWithPower :: Int -> Dragon a -> Dragon a
-dragonWithPower health d = d{dragonFirePower = health}
-
-greenDragon :: Gold -> Dragon a
-greenDragon g = Dragon{dragonHealth = 100, dragonFirePower = 5, dragonReward = GreenDragonReward g}
+greenDragon :: Chest a -> Dragon a
+greenDragon Chest{..} = Dragon{dragonHealth = 200, dragonFirePower = 5, dragonReward = GreenDragonReward chestGold}
 
 blackDragon :: Chest a -> Dragon a
 blackDragon chest = Dragon{dragonHealth = 150, dragonFirePower = 6, dragonReward = BlackDragonReward chest}
@@ -215,8 +232,27 @@ blackDragon chest = Dragon{dragonHealth = 150, dragonFirePower = 6, dragonReward
 redDragon :: Chest a -> Dragon a
 redDragon chest = Dragon{dragonHealth = 100, dragonFirePower = 5, dragonReward = RedDragonReward chest}
 
+rewardToWin :: DragonReward a -> FightResult a
+rewardToWin (RedDragonReward Chest{..}) = Win chestGold chestTreasure (Experience 100)
+rewardToWin (BlackDragonReward Chest{..}) = Win chestGold chestTreasure (Experience 150)
+rewardToWin (GreenDragonReward gold) = Win gold Nothing (Experience 250)
+
 dragonFight :: Knight -> Dragon a -> FightResult a
-dragonFight = error "TODO"
+dragonFight = dragonFight' 1
+
+dragonFight' :: Int -> Knight -> Dragon a -> FightResult a
+dragonFight' trial knight@Knight{..} dragon@Dragon{..}
+  | knightHealth <= 0 = Death -- bias to the death of our knight since death is death
+  | knightEndurance <= 0 = Flee
+  | dragonHealth <= 0 = rewardToWin dragonReward
+  | otherwise = dragonFight' (trial + 1) knight' dragon'
+    where
+      dragonDamage = if trial `mod` 10 == 0 then dragonFirePower else 0
+      endurance' = knightEndurance - 1
+      knight' = knight{knightEndurance = endurance', knightHealth = knightHealth - dragonDamage}
+      dragon' = dragon{dragonHealth = dragonHealth - knightAttack}
+
+
 
 ----------------------------------------------------------------------------
 -- Extra Challenges
