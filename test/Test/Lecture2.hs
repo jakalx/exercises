@@ -6,12 +6,13 @@ module Test.Lecture2
 
 import Data.Bifunctor (second)
 import Data.List (permutations, sort)
+import Data.Maybe (fromJust)
 import GHC.Stack (HasCallStack)
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe, shouldSatisfy)
 import Test.Hspec.Hedgehog (assert, forAll, hedgehog, (===))
 
 import Lecture2 (EvalError (..), Expr (..), constantFolding, dropSpaces, duplicate, eval, evenLists,
-                 isIncreasing, lazyProduct, merge, mergeSort, removeAt)
+                 isIncreasing, lazyProduct, merge, mergeSort, removeAt, dragonFight, redDragon, blackDragon, greenDragon, mkGold, Knight(..), Chest(..), Experience(..), FightResult(..))
 
 import qualified Hedgehog.Gen as Gen
 import qualified Hedgehog.Range as Range
@@ -81,6 +82,29 @@ lecture2Normal = describe "Normal" $ do
         it "Both sides"     $ dropSpaces "   hi   " `shouldBe` "hi"
         it "Single space"   $ dropSpaces " 500 "    `shouldBe` "500"
         it "Infinite space" $ dropSpaces (" infinity" ++ repeat ' ') `shouldBe` "infinity"
+
+    describe "dragonFight" $ do
+      it "A superior knight wins against a black dragon" $ dragonFight superiorKnight (blackDragon smallChest) `shouldBe` outcomeWinBlack
+      it "A superior knight wins against a red dragon"   $ dragonFight superiorKnight (redDragon smallChest) `shouldBe` outcomeWinRed
+      it "A superior knight wins against a green dragon" $ dragonFight superiorKnight (greenDragon smallChest) `shouldBe` outcomeWinGreen
+      it "A wounded knight dies"                         $ dragonFight woundedKnight (blackDragon smallChest) `shouldBe` Death
+      it "A lousy knight runs away"                      $ dragonFight lousyKnight (blackDragon smallChest) `shouldBe` Flee
+      where
+        outcomeWinRed   = Win (chestGold smallChest) (chestTreasure smallChest) (Experience 100)
+        outcomeWinBlack = Win (chestGold smallChest) (chestTreasure smallChest) (Experience 150)
+        outcomeWinGreen = Win (chestGold smallChest) Nothing (Experience 250)
+
+smallChest :: Chest String
+smallChest = Chest (fromJust $ mkGold 100) (Just "surprise")
+
+superiorKnight :: Knight
+superiorKnight = Knight maxBound maxBound maxBound
+
+woundedKnight :: Knight
+woundedKnight = Knight{knightHealth = 1, knightAttack = 1, knightEndurance = 100}
+
+lousyKnight :: Knight
+lousyKnight = Knight{knightHealth = 100, knightAttack = 1, knightEndurance = 2}
 
 lecture2Hard :: Spec
 lecture2Hard = describe "Hard" $ do
