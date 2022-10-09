@@ -80,7 +80,9 @@ lazyProduct = foldr step (1 :: Int)
 "ccaabb"
 -}
 duplicate :: [a] -> [a]
-duplicate = concat . fmap (take 2 . repeat)
+duplicate = foldr dupe []
+  where dupe :: a -> [a] -> [a]
+        dupe x xs = x:x:xs
 
 {- | Implement function that takes index and a list and removes the
 element at the given position. Additionally, this function should also
@@ -274,7 +276,7 @@ True
 -}
 isIncreasing :: [Int] -> Bool
 isIncreasing [] = True
-isIncreasing (_:[]) = True
+isIncreasing [_] = True
 isIncreasing (x:y:rest) = x < y && isIncreasing (y:rest)
 
 
@@ -293,6 +295,7 @@ merge xs [] = xs
 merge [] ys = ys
 merge (x:xs) (y:ys)
   | x < y = x : merge xs (y:ys)
+  | x == y = x:y:merge xs ys
   | otherwise = y : merge (x:xs) ys
 
 {- | Implement the "Merge Sort" algorithm in Haskell. The @mergeSort@
@@ -312,9 +315,10 @@ The algorithm of merge sort is the following:
 mergeSort :: [Int] -> [Int]
 mergeSort [] = []
 mergeSort [x] = [x]
-mergeSort xs = merge (mergeSort left) (mergeSort right)
-  where (left, right) = splitAt pivot xs
-        pivot = length xs `div` 2
+mergeSort list = merge (mergeSort left) (mergeSort right)
+  where (left, right) = foldr step ([], []) list
+        step :: a -> ([a], [a]) -> ([a], [a])
+        step x (xs, ys) = (x:ys, xs)
 
 {- | Haskell is famous for being a superb language for implementing
 compilers and interpeters to other programming languages. In the next
