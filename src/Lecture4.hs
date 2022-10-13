@@ -29,7 +29,7 @@ Specifically:
   2. Each line contains exactly 3 comma-separated values.
   3. The first value is a name of a product: a non-empty string
      containing any characters except comma.
-  4. Second value is the type of trade. It' either a "Buy" or "Sell" string.
+  4. Second value is the type of trade. It's either a "Buy" or "Sell" string.
   5. The last, third value, is a non-negative integer number: the cost
      of the product.
   6. Each value might be surrounded by any amount of spaces.
