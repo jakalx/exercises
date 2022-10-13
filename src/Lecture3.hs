@@ -37,7 +37,6 @@ module Lecture3
 
 -- VVV If you need to import libraries, do it after this line ... VVV
 
-import Data.Semigroup
 import Data.List (nub)
 
 -- ^^^ and before this line. Otherwise the test suite might fail  ^^^
@@ -101,14 +100,9 @@ weekday to the second.
 >>> daysTo Friday Wednesday
 5
 -}
--- daysTo :: (Bounded a, Enum a) => a -> a -> Int
-daysTo :: Weekday -> Weekday -> Int
-daysTo from to = delta
-  where from' = fromEnum from
-        to' = fromEnum to
-        final = fromEnum (maxBound :: Weekday)
-        delta = if to' >= from' then (to' - from')
-                else final - (from' - to') + 1
+daysTo :: forall a. (Bounded a, Enum a) => a -> a -> Int
+daysTo from to = (fromEnum to - fromEnum from) `mod` n
+  where n = succ $ fromEnum (maxBound :: a)
 
 {-
 
@@ -147,7 +141,7 @@ instance Semigroup Reward where
   (<>) :: Reward -> Reward -> Reward
   (Reward lhsGold lhsSpecial) <> (Reward rhsGold rhsSpecial) = Reward gold special
     where gold = lhsGold <> rhsGold
-          special = getAny $ Any lhsSpecial <> Any rhsSpecial
+          special = lhsSpecial || rhsSpecial
 
 instance Monoid Reward where
   mempty :: Reward
@@ -260,15 +254,17 @@ instance Foldable List1 where
   foldr alg acc (List1 a (x:xs)) = a `alg` (foldr alg acc (List1 x xs))
 
   foldMap :: Monoid m => (a -> m) -> List1 a -> m
-  -- foldMap f (List1 a []) = f a
-  -- foldMap f (List1 a (x:xs)) = f a <> foldMap f (List1 x xs)
-  foldMap f = foldr (\a b -> f a <> b) mempty
+  foldMap f (List1 a xs) = f a <> foldMap f xs
 
 
 instance Foldable Treasure where
   foldr :: (a -> b -> b) -> b -> Treasure a -> b
   foldr _ b NoTreasure = b
   foldr alg b (SomeTreasure a) = a `alg` b
+
+  foldMap :: Monoid m => (a -> m) -> Treasure a -> m
+  foldMap _ NoTreasure = mempty
+  foldMap f (SomeTreasure a) = f a
 
 {-
 
