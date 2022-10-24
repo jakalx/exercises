@@ -110,11 +110,13 @@ import Data.Foldable (foldl')
 import qualified Data.List as L
 import Data.Semigroup (Max (..), Min (..), Sum (..))
 import Text.Read (readMaybe)
-import Control.Monad (guard)
+import Control.Exception (handle)
+import Control.Monad (guard, forM_)
 import Data.Function (on)
 import Data.Maybe (fromMaybe, mapMaybe)
 import qualified System.Environment as Env
 import System.IO (hPutStrLn, stderr)
+import System.Exit (exitFailure)
 
 {- In this exercise, instead of writing the entire program from
 scratch, you're offered to complete the missing parts.
@@ -381,7 +383,6 @@ printProductStats fp = case fp of
   "-" -> interact calculateStats
   _ -> (calculateStats <$> readFile fp) >>= putStrLn
 
-
 {-
 Okay, I lied. This is not the last thing. Now, we need to wrap
 everything together. In our 'main' function, we need to read
@@ -396,13 +397,19 @@ https://hackage.haskell.org/package/base-4.16.0.0/docs/System-Environment.html#v
 -}
 
 main :: IO ()
-main = do
+main = handle handleIOError $ do
   args <- Env.getArgs
   case args of
     [] -> eprint "lecture4: missing argument: either - or path to file is required"
-    (f:_) -> printProductStats f
-  where
-    eprint = hPutStrLn stderr
+    files -> forM_ (L.nub files) printProductStats
+
+eprint :: String -> IO ()
+eprint = hPutStrLn stderr
+
+handleIOError :: IOError -> IO ()
+handleIOError err = do
+  eprint ("failed: " <> show err)
+  exitFailure
 
 
 {-
