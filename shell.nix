@@ -6,16 +6,17 @@ mkShell {
   buildInputs = [
     (haskell.packages.ghc8107.ghcWithPackages (p:
       with p; [
-        hspec
-        hspec-hedgehog
+        doctest
+        ghcid
+        haskell-language-server
         hedgehog
         hedgehog-classes
-        doctest
-        silently
-        haskell-language-server
-        ormolu
         hlint
-        ghcid
+        hoogle
+        hspec
+        hspec-hedgehog
+        ormolu
+        silently
       ]))
     cabal-install
   ];
