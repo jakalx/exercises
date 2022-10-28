@@ -149,10 +149,16 @@ errors. We will simply return an optional result here.
 -}
 
 parseRow :: String -> Maybe Row
-parseRow = validateCsvLine . csvLine
+parseRow line = do
+  [rawProduct, rawTradeType, rawCost] <- pure csvLine
+
+  Row
+    <$> validateProduct rawProduct
+    <*> validateTradeType rawTradeType
+    <*> validateCost rawCost
+
   where
-    csvLine :: String -> [String]
-    csvLine = splitBy (== ',')
+    csvLine = splitBy (== ',') line
 
 splitBy :: (a -> Bool) -> [a] -> [[a]]
 splitBy _ [] = []
@@ -161,16 +167,9 @@ splitBy p xs = prefix : splitBy p rest'
     (prefix, rest) = L.break p xs
     rest' = drop 1 rest
 
-validateCsvLine :: [String] -> Maybe Row
-validateCsvLine (a:b:c:[]) = validateRow a b c
-validateCsvLine _ = Nothing
-
-validateRow :: String -> String -> String -> Maybe Row
-validateRow p t c = Row <$> validateProduct p <*> validateTradeType t <*> validateCost c
-
 validateProduct :: String -> Maybe String
 validateProduct p = do
-  guard (not $ null p)
+  guard $ p /= ""
   pure p
 
 validateTradeType :: String -> Maybe TradeType
@@ -205,7 +204,7 @@ If both strings have the same length, return the first one.
 instance Semigroup MaxLen where
   (<>) :: MaxLen -> MaxLen -> MaxLen
   (MaxLen lhs) <> (MaxLen rhs) =
-    let !x = if length lhs >= length rhs then lhs else rhs
+    let x = if length lhs >= length rhs then lhs else rhs
     in MaxLen x
 
 
@@ -233,27 +232,24 @@ The 'Stats' data type has multiple fields. All these fields have
 instance for the 'Stats' type itself.
 -}
 
--- define a strict version of <> similar to $!
-(<>!) :: (Semigroup a) => a -> a -> a
-(<>!)  !a !b = let !x = a <> b in x
-infixr 6 <>!
-
+-- strict semigroup append specialized for Maybe
 sappendMaybe' :: (Semigroup a) => Maybe a -> Maybe a -> Maybe a
-sappendMaybe' (Just !a) (Just !b) = Just $ a <>! b
-sappendMaybe' a b = a <>! b
+sappendMaybe' a b = case a <> b of
+  Nothing -> Nothing
+  Just !x -> Just x
 
 instance Semigroup Stats where
   (<>) :: Stats -> Stats -> Stats
   (<>) lhs rhs = Stats
-    { statsTotalPositions = ((<>!) `on` statsTotalPositions) lhs rhs
-    , statsTotalSum       = ((<>!) `on` statsTotalSum) lhs rhs
-    , statsAbsoluteMax    = ((<>!) `on` statsAbsoluteMax) lhs rhs
-    , statsAbsoluteMin    = ((<>!) `on` statsAbsoluteMin) lhs rhs
+    { statsTotalPositions = ((<>) `on` statsTotalPositions) lhs rhs
+    , statsTotalSum       = ((<>) `on` statsTotalSum) lhs rhs
+    , statsAbsoluteMax    = ((<>) `on` statsAbsoluteMax) lhs rhs
+    , statsAbsoluteMin    = ((<>) `on` statsAbsoluteMin) lhs rhs
     , statsSellMax        = (sappendMaybe' `on` statsSellMax) lhs rhs
     , statsSellMin        = (sappendMaybe' `on` statsSellMin) lhs rhs
     , statsBuyMax         = (sappendMaybe' `on` statsBuyMax) lhs rhs
     , statsBuyMin         = (sappendMaybe' `on` statsBuyMin) lhs rhs
-    , statsLongest        = ((<>!) `on` statsLongest) lhs rhs
+    , statsLongest        = ((<>) `on` statsLongest) lhs rhs
     }
 
 {-
@@ -321,7 +317,7 @@ combineRows :: NonEmpty Row -> Stats
 combineRows = combine . fmap rowToStats
   where
     combine :: NonEmpty Stats -> Stats
-    combine (x :| xs) = foldl' (<>!) x xs
+    combine (x :| xs) = foldl' (<>) x xs
 
 {-
 After we've calculated stats for all rows, we can then pretty-print
@@ -334,15 +330,15 @@ you can return string "no value"
 displayStats :: Stats -> String
 displayStats Stats{..} =
   mconcat $ L.intersperse "\n"
-  [ "Total positions        : " <>! (show $ getSum statsTotalPositions)
-  , "Total final balance    : " <>! (show $ getSum statsTotalSum)
-  , "Biggest absolute cost  : " <>! (show $ getMax statsAbsoluteMax)
-  , "Smallest absolute cost : " <>! (show $ getMin statsAbsoluteMin)
-  , "Max earning            : " <>! (fromMaybe "no value" (fmap (show . getMax) statsSellMax))
-  , "Min earning            : " <>! (fromMaybe "no value" (fmap (show . getMin) statsSellMin))
-  , "Max spending           : " <>! (fromMaybe "no value" (fmap (show . getMax) statsBuyMax))
-  , "Min spending           : " <>! (fromMaybe "no value" (fmap (show . getMin) statsBuyMin))
-  , "Longest product name   : " <>! (unMaxLen statsLongest)
+  [ "Total positions        : " <> (show $ getSum statsTotalPositions)
+  , "Total final balance    : " <> (show $ getSum statsTotalSum)
+  , "Biggest absolute cost  : " <> (show $ getMax statsAbsoluteMax)
+  , "Smallest absolute cost : " <> (show $ getMin statsAbsoluteMin)
+  , "Max earning            : " <> (fromMaybe "no value" (fmap (show . getMax) statsSellMax))
+  , "Min earning            : " <> (fromMaybe "no value" (fmap (show . getMin) statsSellMin))
+  , "Max spending           : " <> (fromMaybe "no value" (fmap (show . getMax) statsBuyMax))
+  , "Min spending           : " <> (fromMaybe "no value" (fmap (show . getMin) statsBuyMin))
+  , "Longest product name   : " <> (unMaxLen statsLongest)
   ]
 
 {-
